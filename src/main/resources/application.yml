@@ -1,0 +1,19 @@
+server:
+  port: 8001
+spring:
+  # REDIS (RedisProperties)
+  redis:
+    database: 1
+    host: 127.0.0.1
+    password: 123456
+    #2.x版本中采用了lettuce作为连接池
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        max-wait: -1ms
+        min-idle: 0
+      shutdown-timeout: 100ms
+  # redisson配置
+  redisson:
+    file: classpath:redisson.yaml
