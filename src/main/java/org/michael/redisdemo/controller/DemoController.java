@@ -2,10 +2,13 @@ package org.michael.redisdemo.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
+import org.redisson.api.RReadWriteLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.concurrent.TimeUnit;
@@ -23,12 +26,15 @@ public class DemoController {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
-    @GetMapping("/deductStock")
-    public void deductStock() {
+    @GetMapping("/deductStock/{productId}")
+    public void deductStock(@PathVariable String productId) {
         //分布式锁key，一般为前缀+业务唯一标识id
-        String lockKey = "product:111";
-        RLock lock = redissonClient.getLock(lockKey);
-
+        String lockKey = "product:"+productId;
+        //传统分布式锁
+//        RLock lock = redissonClient.getLock(lockKey);
+        //获取写锁，为了优化性能，读写锁互斥
+        RReadWriteLock readWriteLock = redissonClient.getReadWriteLock(lockKey);
+        RLock lock = readWriteLock.writeLock();
         try {
             //加锁
             lock.lock();
@@ -40,6 +46,21 @@ public class DemoController {
             //释放当前锁
             lock.unlock();
             log.info("解锁成功, 线程 ID：" + Thread.currentThread().getId());
+        }
+    }
+
+    @GetMapping("/stock/product/{productId}")
+    public void getProductStock(@PathVariable String productId) {
+        String lockKey = "product:"+productId;
+        //获取读锁
+        RReadWriteLock readWriteLock = redissonClient.getReadWriteLock(lockKey);
+        RLock rLock = readWriteLock.readLock();
+        try {
+            rLock.lock();
+            //业务逻辑
+            //...
+        } finally {
+            rLock.unlock();
         }
     }
 
